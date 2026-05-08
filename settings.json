@@ -1,0 +1,20 @@
+{
+  "allowed_zones": ["~/Documents", "~/Downloads", "~/Desktop"],
+  "chrome_debug_port": 9222,
+  "overlay_inactive_timeout": 8,
+  "tts": "pyttsx3",
+  "wake_word": false,
+  "n_ctx": 8192,
+  "capabilities": {
+    "file_read": true,
+    "file_write": false,
+    "file_delete": false,
+    "file_move": false,
+    "browser_read": true,
+    "browser_write": false,
+    "os_clipboard_read": true,
+    "os_clipboard_write": false,
+    "screen_read": true,
+    "screen_click": false
+  }
+}
