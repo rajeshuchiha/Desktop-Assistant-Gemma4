@@ -1,21 +1,35 @@
-"""File operation tools with zone-restricted writes."""
+"""Read-only filesystem tools."""
 
 from __future__ import annotations
 
-import shutil
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
-from send2trash import send2trash
+from src.core.types import ToolResult, capability_blocked, load_capabilities
 
-from src.core.types import ToolResult
-from src.tools import zone_validator
+
+SUPPORTED_TEXT_EXTENSIONS = {
+    ".txt",
+    ".md",
+    ".py",
+    ".json",
+    ".csv",
+    ".log",
+    ".html",
+    ".yaml",
+    ".toml",
+}
 
 
 def list_dir(path: str) -> ToolResult:
     started = time.perf_counter()
+    blocked = _file_read_blocked()
+    if blocked is not None:
+        return blocked
     try:
-        data = [child.name for child in Path(path).iterdir()]
+        data = [_entry_data(child) for child in Path(path).iterdir()]
         return _result(started, True, data=data)
     except Exception as exc:
         return _result(started, False, error=str(exc))
@@ -23,76 +37,111 @@ def list_dir(path: str) -> ToolResult:
 
 def read_file(path: str) -> ToolResult:
     started = time.perf_counter()
+    blocked = _file_read_blocked()
+    if blocked is not None:
+        return blocked
     try:
-        return _result(started, True, data=Path(path).read_text(encoding="utf-8"))
+        target = Path(path)
+        if target.suffix.lower() not in SUPPORTED_TEXT_EXTENSIONS:
+            return _result(started, False, error=f"binary or unsupported file type: {target.suffix}")
+        if _is_binary(target):
+            return _result(started, False, error="binary file rejected")
+        content = target.read_text(encoding="utf-8")
+        return _result(
+            started,
+            True,
+            data={"content": content, "encoding": "utf-8", "size_bytes": target.stat().st_size},
+        )
+    except UnicodeDecodeError:
+        return _result(started, False, error="binary file rejected: unable to decode as utf-8")
     except Exception as exc:
         return _result(started, False, error=str(exc))
 
 
 def search_files(directory: str, pattern: str) -> ToolResult:
     started = time.perf_counter()
+    blocked = _file_read_blocked()
+    if blocked is not None:
+        return blocked
     try:
-        data = [str(path) for path in Path(directory).glob(pattern)]
+        data = [_search_result(path) for path in Path(directory).rglob(pattern)]
         return _result(started, True, data=data)
     except Exception as exc:
         return _result(started, False, error=str(exc))
 
 
-def write_file(path: str, content: str) -> ToolResult:
+def get_file_info(path: str) -> ToolResult:
     started = time.perf_counter()
-    target = Path(path)
-    allowed, reason = zone_validator.is_write_allowed(target)
-    if not allowed:
-        return _result(started, False, error=reason)
-    if zone_validator.is_destructive(target):
-        return _result(started, False, error=f"CONFIRM_REQUIRED: overwrite {target}")
+    blocked = _file_read_blocked()
+    if blocked is not None:
+        return blocked
     try:
-        target.write_text(content, encoding="utf-8")
-        return _result(started, True, data={"path": str(target)})
+        target = Path(path)
+        stat = target.stat()
+        return _result(
+            started,
+            True,
+            data={
+                "name": target.name,
+                "path": str(target.resolve(strict=False)),
+                "size_bytes": stat.st_size,
+                "created": _timestamp(stat.st_ctime),
+                "modified": _timestamp(stat.st_mtime),
+                "extension": target.suffix.lower(),
+                "is_binary": _is_binary(target),
+            },
+        )
     except Exception as exc:
         return _result(started, False, error=str(exc))
 
 
-def create_dir(path: str) -> ToolResult:
-    started = time.perf_counter()
-    target = Path(path)
-    allowed, reason = zone_validator.is_write_allowed(target)
-    if not allowed:
-        return _result(started, False, error=reason)
-    try:
-        target.mkdir(parents=True, exist_ok=True)
-        return _result(started, True, data={"path": str(target)})
-    except Exception as exc:
-        return _result(started, False, error=str(exc))
+def write_file(*args: Any, **kwargs: Any) -> ToolResult:
+    return capability_blocked("file_write")
 
 
-def move_file(src: str, dst: str) -> ToolResult:
-    started = time.perf_counter()
-    destination = Path(dst)
-    allowed, reason = zone_validator.is_write_allowed(destination)
-    if not allowed:
-        return _result(started, False, error=reason)
-    if zone_validator.is_destructive(destination):
-        return _result(started, False, error=f"CONFIRM_REQUIRED: overwrite {destination}")
-    try:
-        shutil.move(src, dst)
-        return _result(started, True, data={"src": src, "dst": dst})
-    except Exception as exc:
-        return _result(started, False, error=str(exc))
+def delete_file(*args: Any, **kwargs: Any) -> ToolResult:
+    return capability_blocked("file_write")
 
 
-def delete_file(path: str) -> ToolResult:
-    started = time.perf_counter()
-    return _result(started, False, error=f"CONFIRM_REQUIRED: delete {path}")
+def move_file(*args: Any, **kwargs: Any) -> ToolResult:
+    return capability_blocked("file_write")
 
 
-def confirm_delete(path: str) -> ToolResult:
-    started = time.perf_counter()
-    try:
-        send2trash(path)
-        return _result(started, True, data={"path": path})
-    except Exception as exc:
-        return _result(started, False, error=str(exc))
+def create_dir(*args: Any, **kwargs: Any) -> ToolResult:
+    return capability_blocked("file_write")
+
+
+def _file_read_blocked() -> ToolResult | None:
+    caps = load_capabilities()
+    if not caps.get("file_read", False):
+        return capability_blocked("file_read")
+    return None
+
+
+def _entry_data(path: Path) -> dict[str, Any]:
+    stat = path.stat()
+    return {
+        "name": path.name,
+        "type": "dir" if path.is_dir() else "file",
+        "size_bytes": stat.st_size,
+        "modified": _timestamp(stat.st_mtime),
+    }
+
+
+def _search_result(path: Path) -> dict[str, Any]:
+    stat = path.stat()
+    return {"path": str(path), "size_bytes": stat.st_size, "modified": _timestamp(stat.st_mtime)}
+
+
+def _is_binary(path: Path) -> bool:
+    if path.is_dir():
+        return False
+    sample = path.read_bytes()[:1024]
+    return b"\0" in sample
+
+
+def _timestamp(value: float) -> str:
+    return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
 
 
 def _result(started: float, success: bool, data=None, error: str | None = None) -> ToolResult:

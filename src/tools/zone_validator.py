@@ -27,6 +27,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from src.core.types import ToolResult
+
 
 HARDCODED_BLOCKED_PATHS = (
     Path("C:/Windows"),

@@ -1,11 +1,11 @@
-"""Operating system interaction tools."""
+"""Read-only operating system inspection tools."""
 
 from __future__ import annotations
 
-import os
 import time
+from typing import Any
 
-from src.core.types import ToolResult
+from src.core.types import ToolResult, capability_blocked, load_capabilities
 
 try:
     import pyperclip
@@ -22,14 +22,12 @@ try:
 except ImportError:
     psutil = None
 
-try:
-    from plyer import notification
-except ImportError:
-    notification = None
-
 
 def get_clipboard() -> ToolResult:
     started = time.perf_counter()
+    blocked = _capability_block("os_clipboard_read")
+    if blocked is not None:
+        return blocked
     try:
         _require(pyperclip, "pyperclip")
         return _result(started, True, data=pyperclip.paste())
@@ -37,18 +35,11 @@ def get_clipboard() -> ToolResult:
         return _result(started, False, error=str(exc))
 
 
-def set_clipboard(text: str) -> ToolResult:
-    started = time.perf_counter()
-    try:
-        _require(pyperclip, "pyperclip")
-        pyperclip.copy(text)
-        return _result(started, True)
-    except Exception as exc:
-        return _result(started, False, error=str(exc))
-
-
 def get_active_window() -> ToolResult:
     started = time.perf_counter()
+    blocked = _capability_block("screen_read")
+    if blocked is not None:
+        return blocked
     try:
         _require(pygetwindow, "pygetwindow")
         _require(psutil, "psutil")
@@ -69,6 +60,9 @@ def get_active_window() -> ToolResult:
 
 def list_running_apps() -> ToolResult:
     started = time.perf_counter()
+    blocked = _capability_block("screen_read")
+    if blocked is not None:
+        return blocked
     try:
         _require(psutil, "psutil")
         apps = []
@@ -80,23 +74,23 @@ def list_running_apps() -> ToolResult:
         return _result(started, False, error=str(exc))
 
 
-def send_notification(title: str, message: str) -> ToolResult:
-    started = time.perf_counter()
-    try:
-        _require(notification, "plyer")
-        notification.notify(title=title, message=message)
-        return _result(started, True)
-    except Exception as exc:
-        return _result(started, False, error=str(exc))
+def set_clipboard(*args: Any, **kwargs: Any) -> ToolResult:
+    return capability_blocked("os_clipboard_write")
 
 
-def open_with_default_app(path: str) -> ToolResult:
-    started = time.perf_counter()
-    try:
-        os.startfile(path)
-        return _result(started, True, data={"path": path})
-    except Exception as exc:
-        return _result(started, False, error=str(exc))
+def send_notification(*args: Any, **kwargs: Any) -> ToolResult:
+    return capability_blocked("os_notification")
+
+
+def open_with_default_app(*args: Any, **kwargs: Any) -> ToolResult:
+    return capability_blocked("os_open")
+
+
+def _capability_block(capability: str) -> ToolResult | None:
+    caps = load_capabilities()
+    if not caps.get(capability, False):
+        return capability_blocked(capability)
+    return None
 
 
 def _window_pid(window) -> int:
