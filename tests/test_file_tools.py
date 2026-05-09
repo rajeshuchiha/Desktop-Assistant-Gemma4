@@ -34,6 +34,7 @@ def test_read_file_rejects_binary_gracefully(monkeypatch):
     result = file_tools.read_file(str(binary_path))
 
     assert result.success is False
+    assert result.error is not None
     assert "binary" in result.error
 
 
@@ -64,6 +65,7 @@ def test_file_read_capability_blocks_reads(monkeypatch):
     result = file_tools.read_file("settings.json")
 
     assert result.success is False
+    assert result.error is not None
     assert "CAPABILITY_DISABLED: file_read" in result.error
 
 

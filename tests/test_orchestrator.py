@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from typing import cast
 
 from src.core.benchmark_logger import BenchmarkLogger
 from src.core.orchestrator import Orchestrator, parse_tool_call
@@ -9,6 +10,7 @@ from src.core.orchestrator import Orchestrator, parse_tool_call
 def test_parse_tool_call_raw_json():
     result = parse_tool_call('{"tool": "get_open_tabs", "params": {"limit": 3}}')
 
+    assert result is not None
     assert result.tool == "get_open_tabs"
     assert result.params == {"limit": 3}
 
@@ -20,6 +22,7 @@ def test_parse_tool_call_markdown_wrapped_json():
         ```"""
     )
 
+    assert result is not None
     assert result.tool == "read_file"
     assert result.params == {"path": "settings.json"}
 
@@ -107,4 +110,6 @@ def test_reset_context_calls_llm_reset(monkeypatch):
 
     orchestrator.reset_context()
 
-    assert orchestrator.llm.reset_called is True
+    fake_llm = cast(FakeLlama, orchestrator.llm)
+
+    assert fake_llm.reset_called

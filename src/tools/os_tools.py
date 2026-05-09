@@ -7,20 +7,24 @@ from typing import Any
 
 from src.core.types import ToolResult, capability_blocked, load_capabilities
 
-try:
-    import pyperclip
-except ImportError:
-    pyperclip = None
+# try:
+#     import pyperclip
+# except ImportError:
+#     pyperclip = None
 
-try:
-    import pygetwindow
-except ImportError:
-    pygetwindow = None
+# try:
+#     import pygetwindow
+# except ImportError:
+#     pygetwindow = None
 
-try:
-    import psutil
-except ImportError:
-    psutil = None
+# try:
+#     import psutil
+# except ImportError:
+#     psutil = None
+
+import pyperclip
+import pygetwindow
+import psutil
 
 
 def get_clipboard() -> ToolResult:
@@ -33,7 +37,6 @@ def get_clipboard() -> ToolResult:
         return _result(started, True, data=pyperclip.paste())
     except Exception as exc:
         return _result(started, False, error=str(exc))
-
 
 def get_active_window() -> ToolResult:
     started = time.perf_counter()

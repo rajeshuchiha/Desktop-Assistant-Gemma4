@@ -20,6 +20,7 @@ dependencies = [
     "pyside6",
     "send2trash",
     "pydantic",
+    "psutil"
 ]
 
 [project.optional-dependencies]

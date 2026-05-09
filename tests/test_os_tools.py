@@ -20,6 +20,7 @@ def test_get_clipboard_capability_blocked(monkeypatch):
 
     result = os_tools.get_clipboard()
 
+    assert result.error is not None
     assert result.success is False
     assert "CAPABILITY_DISABLED: os_clipboard_read" in result.error
 
@@ -49,6 +50,7 @@ def test_get_active_window_capability_blocked(monkeypatch):
 
     result = os_tools.get_active_window()
 
+    assert result.error is not None
     assert result.success is False
     assert "CAPABILITY_DISABLED: screen_read" in result.error
 
@@ -73,10 +75,11 @@ def test_list_running_apps_capability_blocked(monkeypatch):
     result = os_tools.list_running_apps()
 
     assert result.success is False
+    assert result.error is not None
     assert "CAPABILITY_DISABLED: screen_read" in result.error
 
 
 def test_deferred_write_operations_are_blocked():
-    assert "CAPABILITY_DISABLED: os_clipboard_write" in os_tools.set_clipboard("hello").error
-    assert "CAPABILITY_DISABLED: os_notification" in os_tools.send_notification("Hi", "Done").error
-    assert "CAPABILITY_DISABLED: os_open" in os_tools.open_with_default_app("settings.json").error
+    assert "CAPABILITY_DISABLED: os_clipboard_write" in (os_tools.set_clipboard("hello").error or "")
+    assert "CAPABILITY_DISABLED: os_notification" in (os_tools.send_notification("Hi", "Done").error or "")
+    assert "CAPABILITY_DISABLED: os_open" in (os_tools.open_with_default_app("settings.json").error or "")
