@@ -28,15 +28,13 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from src.core.benchmark_logger import BenchmarkLogger
 from src.core.types import ToolCall
 
-try:
-    from llama_cpp import Llama
-except ImportError:
-    Llama = None
+from llama_cpp import Llama
+from llama_cpp.llama_types import ChatCompletionRequestMessage, CreateChatCompletionStreamResponse
 
 
 class Orchestrator:
@@ -73,7 +71,14 @@ class Orchestrator:
             reset()
 
     def _generate_sync(self, prompt: str, image: Any | None = None) -> str:
-        messages = [{"role": "user", "content": _message_content(prompt, image)}]
+        messages = cast(list[ChatCompletionRequestMessage], 
+            [
+                {
+                    "role": "user", 
+                    "content": _message_content(prompt, image)
+                }
+            ]
+        )
         started = time.perf_counter()
         first_token_recorded = False
         chunks: list[str] = []
@@ -152,7 +157,10 @@ def _image_data_url(image: Any) -> str:
     return f"data:image/png;base64,{encoded}"
 
 
-def _chunk_text(chunk: dict[str, Any]) -> str:
+def _chunk_text(chunk: str | CreateChatCompletionStreamResponse) -> str:
+    
+    if isinstance(chunk, str):
+        return chunk
     choices = chunk.get("choices") or []
     if not choices:
         return ""
@@ -164,16 +172,18 @@ def _chunk_text(chunk: dict[str, Any]) -> str:
     return message.get("content") or choice.get("text") or ""
 
 
-def _env_value(key: str, default: str | None = None) -> str | None:
+def _env_value(key: str, default: str | None = None) -> str:
     value = os.getenv(key)
     if value is not None:
         return value
 
     env_path = Path(".env")
+    if not default:
+        return "" #TODO: Remove it later and manage None in other functions
     if not env_path.exists():
         return default
     for line in env_path.read_text(encoding="utf-8").splitlines():
         name, separator, line_value = line.partition("=")
         if separator and name.strip() == key:
-            return line_value.strip()
+            return line_value.strip() or ""
     return default

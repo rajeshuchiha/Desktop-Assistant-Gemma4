@@ -14,20 +14,17 @@ dependencies = [
     "nvidia-ml-py",
     "pyautogui",
     "pynput",
+    "sounddevice",
     "mss",
     "pillow",
     "playwright",
     "pyside6",
     "send2trash",
     "pydantic",
-    "psutil"
+    "psutil",
+    "llama-cpp-python==0.3.4"
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest",
-    "pytest-asyncio",
-]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -39,3 +36,13 @@ where = ["src"]
 name = "llama-cpp-cu121"
 url = "https://abetlen.github.io/llama-cpp-python/whl/cu121"
 explicit = true
+
+[tool.uv.sources]
+llama-cpp-python = {index = "llama-cpp-cu121"}
+
+[dependency-groups]
+dev = [
+    "isort>=8.0.1",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+]
