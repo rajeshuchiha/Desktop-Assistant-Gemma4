@@ -126,7 +126,7 @@ async def get_recent_history(n: int) -> ToolResult:
         if temp_path:
             Path(temp_path).unlink(missing_ok=True)
 
-
+# TODO: Resolve the error of async session not closing 
 async def _connect_browser():
     from playwright.async_api import async_playwright
 

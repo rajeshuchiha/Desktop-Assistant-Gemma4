@@ -10,10 +10,7 @@ from PIL import Image
 from src.core.orchestrator import Orchestrator
 from src.core.types import ToolResult, capability_blocked, load_capabilities
 
-try:
-    import mss
-except ImportError:
-    mss = None
+import mss
 
 
 _MAX_SCREEN_SIZE = (1280, 720)
