@@ -1,0 +1,19 @@
+{
+  "task_id": "test_vram",
+  "task_name": "vram_peak",
+  "timestamp": "2026-05-20T15:40:58.455114+00:00",
+  "metrics": {
+    "ttft_sec": 0.0,
+    "token_throughput": 0.0,
+    "vram_peak_gb": 4.2,
+    "cdp_latency_ms": 0.0,
+    "stt_latency_ms": 0.0,
+    "vision_grounding_success": false,
+    "vision_grounding_px_error": 0.0,
+    "tool_calls": 0,
+    "tool_success_rate": 0.0,
+    "tool_retry_rate": 0.0,
+    "e2e_latency_sec": 1.0
+  },
+  "success": true
+}

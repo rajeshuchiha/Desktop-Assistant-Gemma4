@@ -1,0 +1,19 @@
+{
+  "task_id": "test_001",
+  "task_name": "open_tab",
+  "timestamp": "2026-05-20T15:43:33.627806+00:00",
+  "metrics": {
+    "ttft_sec": 1.2,
+    "token_throughput": 0.0,
+    "vram_peak_gb": 4.1,
+    "cdp_latency_ms": 0.0,
+    "stt_latency_ms": 0.0,
+    "vision_grounding_success": false,
+    "vision_grounding_px_error": 0.0,
+    "tool_calls": 0,
+    "tool_success_rate": 0.0,
+    "tool_retry_rate": 0.0,
+    "e2e_latency_sec": 3.5
+  },
+  "success": true
+}

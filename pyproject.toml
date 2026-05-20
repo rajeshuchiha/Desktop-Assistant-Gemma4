@@ -19,10 +19,12 @@ dependencies = [
     "pillow",
     "playwright",
     "pyside6",
+    "python-dotenv",
     "send2trash",
     "pydantic",
     "psutil",
-    "llama-cpp-python==0.3.4"
+    "pyperclip",
+    "llama-cpp-python"
 ]
 
 

@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ARIA Benchmark Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1a1a2e;
+      --panel: #242441;
+      --panel-2: #2d2d50;
+      --accent: #1A56DB;
+      --text: #e0e0e0;
+      --muted: #a7adc4;
+      --danger: #d94a4a;
+      --danger-bg: #5a242c;
+      --grid: rgba(224, 224, 224, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    main {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .loader {
+      position: relative;
+      overflow: hidden;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      min-height: 42px;
+      padding: 0 16px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: white;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat, .chart-panel {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .stat strong {
+      font-size: 22px;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .chart-panel {
+      min-height: 320px;
+      padding: 16px;
+    }
+
+    .chart-panel h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    canvas {
+      width: 100%;
+      height: 260px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    caption {
+      text-align: left;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      background: var(--panel-2);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    .regression { background: var(--danger-bg); color: #ffd8dd; }
+    .empty { color: var(--muted); padding: 28px 0; }
+
+    @media (max-width: 860px) {
+      main { padding: 16px; }
+      header, .stats, .charts { grid-template-columns: 1fr; }
+      .loader, .button { width: 100%; justify-content: center; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>ARIA Benchmark Dashboard</h1>
+      <label class="loader">
+        <span class="button">Load Benchmark JSON files</span>
+        <input id="fileInput" type="file" accept=".json,application/json" multiple>
+      </label>
+    </header>
+
+    <section class="stats" aria-label="Benchmark summary">
+      <div class="stat"><span>Total runs loaded</span><strong id="totalRuns">0</strong></div>
+      <div class="stat"><span>Date range</span><strong id="dateRange">No data</strong></div>
+      <div class="stat"><span>Overall TSR</span><strong id="overallTsr">0%</strong></div>
+    </section>
+
+    <section class="charts" aria-label="Metric trends">
+      <article class="chart-panel"><h2>TTFT over runs</h2><canvas id="ttftChart"></canvas></article>
+      <article class="chart-panel"><h2>Token throughput over runs</h2><canvas id="throughputChart"></canvas></article>
+      <article class="chart-panel"><h2>VRAM peak over runs</h2><canvas id="vramChart"></canvas></article>
+      <article class="chart-panel"><h2>Task success rate over runs</h2><canvas id="successChart"></canvas></article>
+    </section>
+
+    <table>
+      <caption>Latest run metrics</caption>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Latest value</th>
+          <th>5-run average</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="metricsBody">
+        <tr><td class="empty" colspan="4">Load JSON files from ~/.aria/benchmarks/ or the local benchmarks folder.</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+    const metricDefs = [
+      { key: 'ttft_sec', label: 'TTFT', unit: 's', worseHigh: true },
+      { key: 'token_throughput', label: 'Token throughput', unit: ' tok/s', worseHigh: false },
+      { key: 'vram_peak_gb', label: 'VRAM peak', unit: ' GB', worseHigh: true },
+      { key: 'cdp_latency_ms', label: 'CDP latency', unit: ' ms', worseHigh: true },
+      { key: 'stt_latency_ms', label: 'STT latency', unit: ' ms', worseHigh: true },
+      { key: 'vision_grounding_success', label: 'Vision grounding success', unit: '', worseHigh: false, percent: true },
+      { key: 'vision_grounding_px_error', label: 'Vision grounding px error', unit: ' px', worseHigh: true },
+      { key: 'tool_calls', label: 'Tool calls', unit: '', worseHigh: true },
+      { key: 'tool_success_rate', label: 'Tool success rate', unit: '', worseHigh: false, percent: true },
+      { key: 'tool_retry_rate', label: 'Tool retry rate', unit: '', worseHigh: true, percent: true },
+      { key: 'e2e_latency_sec', label: 'E2E latency', unit: 's', worseHigh: true }
+    ];
+
+    const targetLinePlugin = {
+      id: 'targetLine',
+      beforeDatasetsDraw(chart, args, options) {
+        const redZoneFrom = options.redZoneFrom;
+        if (redZoneFrom === undefined || redZoneFrom === null) return;
+        const { ctx, chartArea, scales } = chart;
+        const y = scales.y.getPixelForValue(redZoneFrom);
+        ctx.save();
+        ctx.fillStyle = 'rgba(217, 74, 74, 0.12)';
+        ctx.fillRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, Math.max(0, y - chartArea.top));
+        ctx.restore();
+      },
+      afterDatasetsDraw(chart, args, options) {
+        const target = options.target;
+        if (target === undefined || target === null) return;
+        const { ctx, chartArea, scales } = chart;
+        const y = scales.y.getPixelForValue(target);
+        if (y < chartArea.top || y > chartArea.bottom) return;
+        ctx.save();
+        ctx.strokeStyle = options.color || '#d94a4a';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left, y);
+        ctx.lineTo(chartArea.right, y);
+        ctx.stroke();
+        ctx.fillStyle = options.color || '#d94a4a';
+        ctx.font = '12px Segoe UI, sans-serif';
+        ctx.fillText(options.label || `Target ${target}`, chartArea.left + 8, y - 7);
+        ctx.restore();
+      }
+    };
+    Chart.register(targetLinePlugin);
+
+    const charts = {};
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', async (event) => {
+      const files = Array.from(event.target.files || []);
+      const runs = (await Promise.all(files.map(readRun))).filter(Boolean)
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      render(runs);
+    });
+
+    async function readRun(file) {
+      try {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        return normalizeRun(payload, file.name);
+      } catch {
+        return null;
+      }
+    }
+
+    function normalizeRun(payload, filename) {
+      const timestamp = payload.timestamp || timestampFromName(filename) || new Date().toISOString();
+      const metrics = payload.metrics || {};
+      return {
+        filename,
+        timestamp,
+        label: compactDate(timestamp),
+        metrics,
+        success: Boolean(payload.success)
+      };
+    }
+
+    function render(runs) {
+      document.getElementById('totalRuns').textContent = runs.length;
+      document.getElementById('dateRange').textContent = dateRange(runs);
+      document.getElementById('overallTsr').textContent = formatPercent(average(runs.map(run => run.success ? 1 : 0)));
+      renderCharts(runs);
+      renderTable(runs);
+    }
+
+    function renderCharts(runs) {
+      const labels = runs.map((run, index) => `${index + 1} ${run.label}`);
+      upsertChart('ttftChart', 'ttft', labels, values(runs, 'ttft_sec'), 'Seconds', 1.5);
+      upsertChart('throughputChart', 'throughput', labels, values(runs, 'token_throughput'), 'Tokens/sec', 25);
+      upsertChart('vramChart', 'vram', labels, values(runs, 'vram_peak_gb'), 'GB', 5.5, true);
+      upsertChart('successChart', 'success', labels, runs.map(run => run.success ? 100 : 0), 'Success %', 75);
+    }
+
+    function upsertChart(canvasId, chartKey, labels, data, yTitle, target, redZone) {
+      if (charts[chartKey]) charts[chartKey].destroy();
+      const ctx = document.getElementById(canvasId);
+      charts[chartKey] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: yTitle,
+              data,
+              borderColor: '#1A56DB',
+              backgroundColor: 'rgba(26, 86, 219, 0.18)',
+              borderWidth: 2,
+              pointRadius: 3,
+              tension: 0.25,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#e0e0e0' } },
+            targetLine: {
+              target,
+              redZoneFrom: redZone ? 5.5 : null,
+              label: `Target ${target}${yTitle === 'Success %' ? '%' : ''}`,
+              color: '#d94a4a'
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#a7adc4' }, grid: { color: 'rgba(224, 224, 224, 0.08)' } },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: yTitle, color: '#a7adc4' },
+              ticks: { color: '#a7adc4' },
+              grid: { color: 'rgba(224, 224, 224, 0.12)' }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTable(runs) {
+      const body = document.getElementById('metricsBody');
+      body.innerHTML = '';
+      if (!runs.length) {
+        body.innerHTML = '<tr><td class="empty" colspan="4">Load JSON files from ~/.aria/benchmarks/ or the local benchmarks folder.</td></tr>';
+        return;
+      }
+      const latestIndex = runs.length - 1;
+      const latest = runs[latestIndex];
+      for (const metric of metricDefs) {
+        const series = values(runs, metric.key);
+        const latestValue = series[latestIndex] ?? 0;
+        const previous = series.slice(Math.max(0, latestIndex - 5), latestIndex);
+        const rolling = average(previous);
+        const regression = isRegression(metric, latestValue, rolling, previous.length);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${metric.label}</td>
+          <td class="${regression ? 'regression' : ''}">${formatMetric(latestValue, metric)}</td>
+          <td>${previous.length ? formatMetric(rolling, metric) : 'n/a'}</td>
+          <td>${regression ? 'Regression > 10%' : 'OK'}</td>
+        `;
+        body.appendChild(row);
+      }
+    }
+
+    function values(runs, key) {
+      return runs.map(run => numericValue(run.metrics[key]));
+    }
+
+    function numericValue(value) {
+      if (typeof value === 'boolean') return value ? 1 : 0;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : 0;
+    }
+
+    function isRegression(metric, latest, rolling, count) {
+      if (!count || !Number.isFinite(rolling)) return false;
+      if (rolling === 0) return latest > 0 && metric.worseHigh;
+      return metric.worseHigh ? latest > rolling * 1.1 : latest < rolling * 0.9;
+    }
+
+    function average(numbers) {
+      const valid = numbers.filter(Number.isFinite);
+      return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : 0;
+    }
+
+    function formatMetric(value, metric) {
+      if (metric.percent) return formatPercent(value);
+      if (Number.isInteger(value)) return `${value}${metric.unit}`;
+      return `${value.toFixed(2)}${metric.unit}`;
+    }
+
+    function formatPercent(value) {
+      return `${(value * 100).toFixed(0)}%`;
+    }
+
+    function compactDate(timestamp) {
+      const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) return timestamp;
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+
+    function dateRange(runs) {
+      if (!runs.length) return 'No data';
+      const first = new Date(runs[0].timestamp);
+      const last = new Date(runs[runs.length - 1].timestamp);
+      return `${first.toLocaleString()} - ${last.toLocaleString()}`;
+    }
+
+    function timestampFromName(filename) {
+      const match = filename.match(/(\d{8})_(\d{6})/);
+      if (!match) return null;
+      const [, date, time] = match;
+      return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}T${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}`;
+    }
+  </script>
+</body>
+</html>
