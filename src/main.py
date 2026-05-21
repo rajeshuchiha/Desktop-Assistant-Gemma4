@@ -10,10 +10,8 @@ from dataclasses import dataclass
 from queue import Empty
 from typing import Any, Callable
 
-try:
-    from dotenv import load_dotenv
-except ImportError:  # pragma: no cover - dependency declared, but keep startup graceful.
-    load_dotenv = None  # type: ignore[assignment]
+from dotenv import load_dotenv
+load_dotenv()   # before other imports
 
 from src.core.orchestrator import Orchestrator, parse_tool_call
 from src.core.types import ToolCall, ToolResult
@@ -126,8 +124,6 @@ class ARIAMainApp:
 
 
 def create_runtime() -> tuple[ARIAMainApp, RuntimeHandles]:
-    if load_dotenv is not None:
-        load_dotenv()
 
     ipc_queue = multiprocessing.Queue()
     orchestrator = Orchestrator()

@@ -49,6 +49,7 @@ class Orchestrator:
         benchmark_logger: BenchmarkLogger | None = None,
     ):
         resolved_model_path = str(model_path or _env_value("MODEL_PATH", ""))
+       
         if not resolved_model_path:
             raise ValueError("MODEL_PATH is required in the environment or .env")
         if Llama is None:
